@@ -8,6 +8,7 @@
 #ifndef CRS_ENCODE_H_
 #define CRS_ENCODE_H_
 
+#include <stdio.h>
 #include "crs_spec_io.h"
 #define MAX_FILENAME_LENGTH 5 /* d1, ..., d9999 && c1, ..., c9999 */
 
@@ -23,13 +24,16 @@ int calc_min_w(struct crs_encoding_spec *spec);
 
 char **file2data_matrix(FILE *f, struct crs_encoding_spec *spec);
 
-char **alloc_coding_matrix(struct crs_encoding_spec *spec);
+char **read_files(char *src, int maxNr, size_t fileSize, char firstChar, int *present);
+
+char **calloc_matrix(int rows, int columns);
 
 int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char *dest);
 
-void free_data_matrix(char **data, struct crs_encoding_spec *spec);
+void free_matrix(char **matrix, int rows);
 
-void free_coding_matrix(char **coding, struct crs_encoding_spec *spec);
+int str2int(char *str, int *i);
 
+void print_usage(char *progName);
 
 #endif /* CRS_ENCODE_H_ */

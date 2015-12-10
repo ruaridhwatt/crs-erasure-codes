@@ -20,7 +20,7 @@ struct crs_encoding_spec {
 	int *bitmatrix;
 };
 
-struct crs_encoding_spec read_spec(char *src);
+int read_spec(char *src, struct crs_encoding_spec *spec);
 
 int write_spec(struct crs_encoding_spec *spec, char *dest);
 

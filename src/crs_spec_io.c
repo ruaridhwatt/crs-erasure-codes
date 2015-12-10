@@ -5,6 +5,7 @@
  *      Author: dv12rwt
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include "crs_spec_io.h"
