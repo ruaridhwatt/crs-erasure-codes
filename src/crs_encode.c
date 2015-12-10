@@ -1,24 +1,24 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <limits.h>
-#include <stdint.h>
 #include <jerasure.h>
 #include <cauchy.h>
 #include <errno.h>
 #include "crs_encode.h"
 
-/* args: src dest k m */
 int main(int argc, char **argv) {
    int c, res, i;
    int encode = -1;
    char *src = NULL;
    char *dest = NULL;
-   struct encoding_spec spec;
+   struct crs_encoding_spec spec;
+
+   spec.k = 0;
+   spec.m = 0;
 
    while ((c = getopt(argc, argv, "edk:m:")) != -1)
       switch (c) {
@@ -70,14 +70,17 @@ int main(int argc, char **argv) {
       }
    }
 
-   if (encode = ) {
-      fprintf(stderr, "usage: ");
-      return EXIT_FAILURE;
+   switch (encode) {
+   case 0:
+	   res = decode(src, &spec);
+	   break;
+   case 1:
+	   res = encode(src, dest, &spec);
+	   break;
+   default:
+	   print_usage(argv[0]);
+	   res = -1;
    }
-
-   sscanf(argv[3], "%d", &spec.k);
-   sscanf(argv[4], "%d", &spec.m);
-   res = encode(argv[1], argv[2], &spec);
    if (res == 0) {
       printf("Success!\n");
       fprintf(stdout, "Padding=%d bytes\n", (int) spec.endPadding);
@@ -87,53 +90,7 @@ int main(int argc, char **argv) {
    return res;
 }
 
-void print_usage(char *progName) {
-   fprints(stdout, "Usage:\n");
-   fprints(stdout, "\t%s [options] [src] [dest]\n");
-   fprints(stdout, "Options:\n");
-   fprints(stdout, "\t-e\t encode\n");
-   fprints(stdout, "\t-d\t decode (when decoding only the source folder is required)\n");
-   fprints(stdout, "\t-k\t the number of data files (when encoding only)\n");
-   fprints(stdout, "\t-m\t the number of coding files (when encoding only)\n");
-}
-
-/*
- * Converts a null terminated array of characters to an integer.
- *
- * str:     The array of characters to be read.
- *
- * i:       A pointer specifying where the conversion should be stored.
- *
- * Returns: True if the conversion was successful, otherwise false.
- *          A conversion is considered successful iff all the str characters
- *          were used in the conversion and the result was within the range an
- *          int can store.
- */
-int str2int(char *str, int *i) {
-   long l;
-   int res = -1;
-   char *pEnd;
-
-   if (str == NULL) {
-      return -1;
-   }
-
-   errno = 0;
-
-   l = strtol(str, &pEnd, 10);
-   if (pEnd == str || *pEnd != '\0' || errno == ERANGE) {
-      return -1;
-   }
-
-   if (l > INT_MAX || l < INT_MIN) {
-      errno = ERANGE;
-      return -1;
-   }
-   *i = (int) l;
-   return 0;;
-}
-
-int encode(char *src, char *dest, struct encoding_spec *spec) {
+int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 
    int res = 0;
    FILE *srcfile;
@@ -175,14 +132,14 @@ int encode(char *src, char *dest, struct encoding_spec *spec) {
       return -1;
    }
 
-   data = read_file(srcfile, spec);
+   data = file2data_matrix(srcfile, spec);
    fclose(srcfile);
    if (data == NULL) {
       fprintf(stderr, "Could not create data matrix from input file\n%s\n", strerror(errno));
       return -1;
    }
 
-   coding = create_coding_matrix(spec);
+   coding = alloc_coding_matrix(spec);
    if (coding == NULL) {
       fprintf(stderr, "Could not create coding matrix\n%s\n", strerror(errno));
       free_data_matrix(data, spec);
@@ -227,7 +184,13 @@ int encode(char *src, char *dest, struct encoding_spec *spec) {
    return res;
 }
 
-int fill_encoding_spec(struct encoding_spec *spec, size_t filesize) {
+int decode(char *src, struct crs_encoding_spec *spec) {
+	FILE *f;
+	/* TODO */
+	return 0;
+}
+
+int fill_encoding_spec(struct crs_encoding_spec *spec, size_t filesize) {
 
    int res;
 
@@ -246,7 +209,7 @@ int fill_encoding_spec(struct encoding_spec *spec, size_t filesize) {
    return 0;
 }
 
-int calc_padding(size_t filesize, struct encoding_spec *spec) {
+int calc_padding(size_t filesize, struct crs_encoding_spec *spec) {
    int div = spec->k * sizeof(long);
    spec->endPadding = div - (filesize % div);
    if ((filesize + spec->endPadding) % sizeof(long) != 0) {
@@ -255,7 +218,7 @@ int calc_padding(size_t filesize, struct encoding_spec *spec) {
    return 0;
 }
 
-int calc_min_w(struct encoding_spec *spec) {
+int calc_min_w(struct crs_encoding_spec *spec) {
    int n = 4;
    spec->w = 2;
    while (n < spec->k + spec->m || spec->width % spec->w != 0) {
@@ -268,7 +231,7 @@ int calc_min_w(struct encoding_spec *spec) {
    return 0;
 }
 
-char **read_file(FILE *f, struct encoding_spec *spec) {
+char **file2data_matrix(FILE *f, struct crs_encoding_spec *spec) {
    int i;
    int res = 0;
    char **data;
@@ -302,7 +265,7 @@ char **read_file(FILE *f, struct encoding_spec *spec) {
    return data;
 }
 
-char **create_coding_matrix(struct encoding_spec *spec) {
+char **alloc_coding_matrix(struct crs_encoding_spec *spec) {
    int i;
    int res = 0;
    char **coding;
@@ -329,7 +292,7 @@ char **create_coding_matrix(struct encoding_spec *spec) {
    return coding;
 }
 
-int write_files(char **data, char **coding, struct encoding_spec *spec, char *dest) {
+int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char *dest) {
    int i;
    FILE* f;
    int res = 0;
@@ -345,58 +308,9 @@ int write_files(char **data, char **coding, struct encoding_spec *spec, char *de
       return -1;
    }
 
-   /* Write spec to disk */
+   /* Write spec file */
    snprintf(filePath, pathLen, "%s/spec", dest);
-   f = fopen(filePath, "wb");
-   if (f == NULL) {
-      free(filePath);
-      return -1;
-   }
-   specToWrite = spec->k;
-   nrWritten = fwrite(&specToWrite, sizeof(uint64_t), 1, f);
-   if (nrWritten != 1) {
-      fclose(f);
-      free(filePath);
-      return -1;
-   }
-   specToWrite = spec->m;
-   nrWritten = fwrite(&specToWrite, sizeof(uint64_t), 1, f);
-   if (nrWritten != 1) {
-      fclose(f);
-      free(filePath);
-      return -1;
-   }
-   specToWrite = spec->w;
-   nrWritten = fwrite(&specToWrite, sizeof(uint64_t), 1, f);
-   if (nrWritten != 1) {
-      fclose(f);
-      free(filePath);
-      return -1;
-   }
-   specToWrite = spec->width;
-   nrWritten = fwrite(&specToWrite, sizeof(uint64_t), 1, f);
-   if (nrWritten != 1) {
-      fclose(f);
-      free(filePath);
-      return -1;
-   }
-   specToWrite = spec->endPadding;
-   nrWritten = fwrite(&specToWrite, sizeof(uint64_t), 1, f);
-   if (nrWritten != 1) {
-      fclose(f);
-      free(filePath);
-      return -1;
-   }
-   for (i = 0; i < bitmatrixSize; i++) {
-      bitToWrite = (char) spec->bitmatrix[i];
-      nrWritten = fwrite(&bitToWrite, sizeof(char), 1, f);
-      if (nrWritten != 1) {
-         fclose(f);
-         free(filePath);
-         return -1;
-      }
-   }
-   fclose(f);
+   write_spec(spec, filePath);
 
    /* Write data files */
    for (i = 0; i < spec->k; i++) {
@@ -440,7 +354,7 @@ int write_files(char **data, char **coding, struct encoding_spec *spec, char *de
    return res;
 }
 
-void free_data_matrix(char **data, struct encoding_spec *spec) {
+void free_data_matrix(char **data, struct crs_encoding_spec *spec) {
    int i;
    for (i = 0; i < spec->k; i++) {
       free(data[i]);
@@ -448,11 +362,57 @@ void free_data_matrix(char **data, struct encoding_spec *spec) {
    free(data);
 }
 
-void free_coding_matrix(char **coding, struct encoding_spec *spec) {
+void free_coding_matrix(char **coding, struct crs_encoding_spec *spec) {
    int i;
    for (i = 0; i < spec->m; i++) {
       free(coding[i]);
    }
    free(coding);
+}
+
+/*
+ * Converts a null terminated array of characters to an integer.
+ *
+ * str:     The array of characters to be read.
+ *
+ * i:       A pointer specifying where the conversion should be stored.
+ *
+ * Returns: True if the conversion was successful, otherwise false.
+ *          A conversion is considered successful iff all the str characters
+ *          were used in the conversion and the result was within the range an
+ *          int can store.
+ */
+int str2int(char *str, int *i) {
+   long l;
+   int res = -1;
+   char *pEnd;
+
+   if (str == NULL) {
+      return -1;
+   }
+
+   errno = 0;
+
+   l = strtol(str, &pEnd, 10);
+   if (pEnd == str || *pEnd != '\0' || errno == ERANGE) {
+      return -1;
+   }
+
+   if (l > INT_MAX || l < INT_MIN) {
+      errno = ERANGE;
+      return -1;
+   }
+   *i = (int) l;
+   return 0;;
+}
+
+void print_usage(char *progName) {
+   fprints(stdout, "Usage:\n");
+   fprints(stdout, "\t%s [options] [src] [dest]\n");
+   fprints(stdout, "Options:\n");
+   fprints(stdout, "\t-e\t encode\n");
+   fprints(stdout, "\t-d\t decode (when decoding only the source folder is required)\n");
+   fprints(stdout, "\t-k\t the number of data files (when encoding only)\n");
+   fprints(stdout, "\t-m\t the number of coding files (when encoding only)\n");
 }
 
