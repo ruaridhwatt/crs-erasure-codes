@@ -20,6 +20,9 @@
 *.so.*
 *.dylib
 
+# Bin dir
+bin
+
 # Executables
 *.exe
 *.out
@@ -30,3 +33,8 @@
 
 # Debug files
 *.dSYM/
+
+# Eclipse project files
+.project
+.cproject
+.settings
