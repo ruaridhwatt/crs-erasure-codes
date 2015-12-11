@@ -1,6 +1,6 @@
 OUT=crs_erasure_codes
 COMPILER=gcc
-FLAGS=-Wall -pedantic 
+FLAGS=-g -Wall -pedantic 
 LIBS=-lJerasure -I/usr/include/jerasure/
 
 BIN_DIR=../bin

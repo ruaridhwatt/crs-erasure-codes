@@ -76,16 +76,18 @@ int main(int argc, char **argv) {
 	case 0:
 		if (src == NULL) {
 			print_usage(argv[0]);
-			exit(1);
+			res = -1;
+		} else {
+			res = decode(src, &spec);
 		}
-		res = decode(src, &spec);
 		break;
 	case 1:
 		if (src == NULL || dest == NULL) {
 			print_usage(argv[0]);
-			exit(1);
+			res = -1;
+		} else {
+			res = encode(src, dest, &spec);
 		}
-		res = encode(src, dest, &spec);
 		break;
 	default:
 		print_usage(argv[0]);
@@ -121,12 +123,14 @@ int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 	srcfile = fopen(src, "r");
 	if (srcfile == NULL) {
 		fprintf(stderr, "Could not open %s for reading\n%s\n", src, strerror(errno));
+		fclose(srcfile);
 		return -1;
 	}
 
 	/* Get input file stats */
 	if (fstat(fileno(srcfile), &srcStat) < 0) {
 		fprintf(stderr, "Could not get file info for %s\n%s\n", src, strerror(errno));
+		fclose(srcfile);
 		return -1;
 	}
 
@@ -134,6 +138,7 @@ int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 	res = mkdir(dest, S_IRWXU | S_IRWXG);
 	if (res < 0) {
 		fprintf(stderr, "Could not create directory %s\n%s\n", dest, strerror(errno));
+		fclose(srcfile);
 		return -1;
 	}
 
@@ -141,16 +146,17 @@ int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 	res = fill_encoding_spec(spec, srcStat.st_size);
 	if (res < 0) {
 		fprintf(stderr, "Error: Could not fill encoding spec in crs_encode.encode\n");
+		fclose(srcfile);
 		return -1;
 	}
 
 	/* Read data from file */
 	data = file2data_matrix(srcfile, spec);
-	fclose(srcfile);
 	if (data == NULL) {
 		fprintf(stderr, "Could not create data matrix from input file\n%s\n", strerror(errno));
 		return -1;
 	}
+	fclose(srcfile);
 
 	/* Alloc coding matrix */
 	coding = calloc_matrix(spec->m, spec->width);
@@ -439,7 +445,11 @@ int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char
 
 	/* Write spec file */
 	snprintf(filePath, pathLen, "%s/spec", dest);
-	write_spec(spec, filePath);
+	res = write_spec(spec, filePath);
+	if (res < 0) {
+		free(filePath);
+		return -1;
+	}
 
 	/* Write data files */
 	for (i = 0; i < spec->k; i++) {

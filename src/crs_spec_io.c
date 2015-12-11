@@ -91,19 +91,19 @@ int write_spec(struct crs_encoding_spec *spec, char *dest) {
 		return -1;
 	}
 
-	nrWritten = fwrite(&(spec->w), sizeof(uint64_t), 1, f);
+	nrWritten = fwrite(&(spec->w), sizeof(int), 1, f);
 	if (nrWritten != 1) {
 		fclose(f);
 		return -1;
 	}
 
-	nrWritten = fwrite(&(spec->width), sizeof(uint64_t), 1, f);
+	nrWritten = fwrite(&(spec->width), sizeof(size_t), 1, f);
 	if (nrWritten != 1) {
 		fclose(f);
 		return -1;
 	}
 
-	nrWritten = fwrite(&(spec->endPadding), sizeof(uint64_t), 1, f);
+	nrWritten = fwrite(&(spec->endPadding), sizeof(size_t), 1, f);
 	if (nrWritten != 1) {
 		fclose(f);
 		return -1;
