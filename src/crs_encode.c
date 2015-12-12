@@ -260,13 +260,47 @@ int decode(char *src, struct crs_encoding_spec *spec) {
 	free(present);
 
 	jerasure_schedule_decode_lazy(spec->k, spec->m, spec->w, spec->bitmatrix, erasures, data, coding, spec->width, (spec->width / spec->w), 1);
-	/* TODO write back repaired erasures */
+
+	res = repair_files(src, data, coding, spec, erasures);
 
 	free(erasures);
 	free_matrix(data, spec->k);
 	free_matrix(coding, spec->m);
 	free(spec->bitmatrix);
 	return 0;
+}
+
+int repair_files(char *src, char **data, char **coding, struct crs_encoding_spec *spec, int *erasures) {
+	char *filePath;
+	int fileNr;
+	int res = 0;
+	int i = 0;
+
+	int pathLen = strlen(src) + MAX_FILENAME_LENGTH + 2;
+	filePath = (char *) calloc(pathLen, sizeof(char));
+	if (filePath == NULL) {
+		return -1;
+	}
+
+	fprintf(stdout, "Repairing files:\n");
+
+	while (erasures[i] != -1) {
+		fileNr = erasures[i];
+		if (fileNr < spec->k) {
+			snprintf(filePath, pathLen, "%s/d%d", src, fileNr + 1);
+			res = write_file(data, fileNr, spec->width, filePath);
+		} else {
+			snprintf(filePath, pathLen, "%s/c%d", src, fileNr - spec->k + 1);
+			res = write_file(coding, fileNr - spec->k, spec->width, filePath);
+		}
+		fprintf(stdout, "\t%s\n", filePath);
+		if (res < 0) {
+			break;
+		}
+		i++;
+	}
+	free(filePath);
+	return res;
 }
 
 char **read_files(char *src, int maxNr, size_t fileSize, char firstChar, int *present) {
@@ -432,12 +466,9 @@ char **calloc_matrix(int rows, int columns) {
 
 int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char *dest) {
 	int i;
-	FILE* f;
 	int res = 0;
-	size_t nrWritten;
 
 	int pathLen = strlen(dest) + MAX_FILENAME_LENGTH + 2;
-
 	char *filePath = (char *) calloc(pathLen, sizeof(char));
 	if (filePath == NULL) {
 		return -1;
@@ -454,18 +485,10 @@ int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char
 	/* Write data files */
 	for (i = 0; i < spec->k; i++) {
 		snprintf(filePath, pathLen, "%s/d%d", dest, i + 1);
-		f = fopen(filePath, "wb");
-		if (f == NULL) {
-			res = -1;
+		res = write_file(data, i, spec->width, filePath);
+		if (res < 0) {
 			break;
 		}
-		nrWritten = fwrite((void *) data[i], sizeof(char), spec->width, f);
-		if (nrWritten != spec->width) {
-			res = -1;
-			fclose(f);
-			break;
-		}
-		fclose(f);
 	}
 	if (res < 0) {
 		free(filePath);
@@ -475,21 +498,33 @@ int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char
 	/* Write coding files */
 	for (i = 0; i < spec->m; i++) {
 		snprintf(filePath, pathLen, "%s/c%d", dest, i + 1);
-		f = fopen(filePath, "wb");
-		if (f == NULL) {
-			res = -1;
+		res = write_file(coding, i, spec->width, filePath);
+		if (res < 0) {
 			break;
 		}
-		nrWritten = fwrite((void *) coding[i], sizeof(char), spec->width, f);
-		if (nrWritten != spec->width) {
-			res = -1;
-			fclose(f);
-			break;
-		}
+	}
+	free(filePath);
+	return res;
+}
+
+int write_file(char **matrix, int row, size_t width, char *filePath) {
+	FILE *f;
+	int res;
+	size_t nrWritten;
+
+	f = fopen(filePath, "wb");
+	if (f == NULL) {
+		return -1;
+	}
+	nrWritten = fwrite((void *) matrix[row], sizeof(char), width, f);
+	if (nrWritten != width) {
 		fclose(f);
+		res = -1;
+	} else {
+		res = 0;
 	}
 
-	free(filePath);
+	fclose(f);
 	return res;
 }
 

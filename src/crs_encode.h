@@ -16,6 +16,8 @@ int encode(char *src, char *dest, struct crs_encoding_spec *spec);
 
 int decode(char *src, struct crs_encoding_spec *spec);
 
+int repair_files(char *src, char **data, char **coding, struct crs_encoding_spec *spec, int *erasures);
+
 int fill_encoding_spec(struct crs_encoding_spec *spec, size_t filesize);
 
 int calc_padding(size_t filesize, struct crs_encoding_spec *spec);
@@ -29,6 +31,8 @@ char **read_files(char *src, int maxNr, size_t fileSize, char firstChar, int *pr
 char **calloc_matrix(int rows, int columns);
 
 int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char *dest);
+
+int write_file(char **matrix, int row, size_t width, char *filePath);
 
 void free_matrix(char **matrix, int rows);
 
