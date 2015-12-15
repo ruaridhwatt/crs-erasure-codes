@@ -53,7 +53,7 @@ int read_spec(char *src, struct crs_encoding_spec *spec) {
 
 	bitmatrixSize = spec->w * spec->m * spec->w * spec->k;
 	spec->bitmatrix = (int *) malloc(bitmatrixSize * sizeof(int));
-	for (i = 0; i < bitmatrixSize - 1; i++) {
+	for (i = 0; i < bitmatrixSize; i++) {
 		nrRead = fread(&bitBuf, sizeof(char), 1, f);
 		if (nrRead != 1) {
 			fclose(f);

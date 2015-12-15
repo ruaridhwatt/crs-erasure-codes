@@ -91,13 +91,19 @@ int write_files(char **data, char **coding, struct crs_encoding_spec *spec, char
 	}
 
 	/* Write data files */
-	for (i = 0; i < spec->k; i++) {
+	for (i = 0; i < spec->k - 1; i++) {
 		snprintf(filePath, pathLen, "%s/d%d", dest, i + 1);
 		res = write_binary_bytes(data[i], spec->width, filePath);
 		if (res < 0) {
 			break;
 		}
 	}
+	if (res < 0) {
+		free(filePath);
+		return -1;
+	}
+	snprintf(filePath, pathLen, "%s/d%d", dest, i + 1);
+	res = write_binary_bytes(data[i], spec->width - spec->endPadding, filePath);
 	if (res < 0) {
 		free(filePath);
 		return -1;
@@ -134,7 +140,6 @@ char **read_files(char *src, int maxNr, size_t fileSize, char prefix, int *prese
 	DIR *d;
 	struct dirent *dent;
 	FILE* f;
-	struct stat fs;
 	int res, fileNr;
 	char *filePath;
 
@@ -168,14 +173,8 @@ char **read_files(char *src, int maxNr, size_t fileSize, char prefix, int *prese
 				res = -1;
 				break;
 			}
-			res = fstat(fileno(f), &fs);
-			if (res < 0 || fs.st_size != fileSize) {
-				res = -1;
-				fclose(f);
-				break;
-			}
 			res = fread(data[fileNr - 1], sizeof(char), fileSize, f);
-			if (res != fileSize) {
+			if (res == 0) {
 				res = -1;
 				fclose(f);
 				break;

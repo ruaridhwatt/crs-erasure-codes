@@ -94,6 +94,8 @@ int main(int argc, char **argv) {
 	}
 	if (res == 0) {
 		printf("Success!\n");
+	} else {
+		printf("Error!\n");
 	}
 	return res;
 }
@@ -204,16 +206,21 @@ int decode(char *src, struct crs_encoding_spec *spec) {
 
 	present = (int *) calloc(spec->k, sizeof(int));
 	if (present == NULL) {
+		free(spec->bitmatrix);
 		return -1;
 	}
 	erasures = (int *) malloc((spec->k + spec->m + 1) * sizeof(int));
 	if (erasures == NULL) {
+		free(spec->bitmatrix);
 		free(present);
 		return -1;
 	}
 
 	data = read_files(src, spec->k, spec->width, 'd', present);
 	if (data == NULL) {
+		free(spec->bitmatrix);
+		free(present);
+		free(erasures);
 		return -1;
 	}
 	j = 0;
@@ -230,6 +237,9 @@ int decode(char *src, struct crs_encoding_spec *spec) {
 
 	coding = read_files(src, spec->m, spec->width, 'c', present);
 	if (coding == NULL) {
+		free(spec->bitmatrix);
+		free(present);
+		free(erasures);
 		matrix_free(data, spec->k);
 		return -1;
 	}
@@ -255,10 +265,10 @@ int decode(char *src, struct crs_encoding_spec *spec) {
 		}
 	}
 
+	free(spec->bitmatrix);
 	free(erasures);
 	matrix_free(data, spec->k);
 	matrix_free(coding, spec->m);
-	free(spec->bitmatrix);
 	return res;
 }
 
