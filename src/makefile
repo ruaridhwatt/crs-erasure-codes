@@ -1,4 +1,4 @@
-OUT=crs_erasure_codes
+OUT=crs-erasure-codes
 COMPILER=gcc
 FLAGS=-g -Wall -pedantic -I/usr/include/jerasure/
 LIBS=-lJerasure

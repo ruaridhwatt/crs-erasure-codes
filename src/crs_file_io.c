@@ -206,9 +206,12 @@ int repair_files(char *src, char **data, char **coding, struct crs_encoding_spec
 
 	while (erasures[i] != -1) {
 		row = erasures[i];
-		if (row < spec->k) {
+		if (row < spec->k - 1) {
 			snprintf(filePath, pathLen, "%s/d%d", src, row + 1);
 			res = write_binary_bytes(data[row], spec->width, filePath);
+		} else if (row == spec->k - 1) {
+			snprintf(filePath, pathLen, "%s/d%d", src, row + 1);
+			res = write_binary_bytes(data[row], spec->width - spec->endPadding, filePath);
 		} else {
 			snprintf(filePath, pathLen, "%s/c%d", src, row - spec->k + 1);
 			res = write_binary_bytes(coding[row - spec->k], spec->width, filePath);
