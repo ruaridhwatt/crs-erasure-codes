@@ -7,11 +7,11 @@ BIN_DIR=../bin
 
 all: $(OUT)
 
-$(OUT): crs_encode.o crs_file_io.o crs_spec_io.o
-	$(COMPILER) $(FLAGS) -o $(BIN_DIR)/$(OUT) $(BIN_DIR)/crs_encode.o $(BIN_DIR)/crs_spec_io.o $(BIN_DIR)/crs_file_io.o $(LIBS)
+$(OUT): crs_erasure_codes.o crs_file_io.o crs_spec_io.o
+	$(COMPILER) $(FLAGS) -o $(BIN_DIR)/$(OUT) $(BIN_DIR)/crs_erasure_codes.o $(BIN_DIR)/crs_spec_io.o $(BIN_DIR)/crs_file_io.o $(LIBS)
 
-crs_encode.o: crs_encode.c crs_encode.h crs_spec_io.h
-	$(COMPILER) $(FLAGS) -o $(BIN_DIR)/crs_encode.o crs_encode.c -c
+crs_erasure_codes.o: crs_erasure_codes.c crs_erasure_codes.h crs_spec_io.h
+	$(COMPILER) $(FLAGS) -o $(BIN_DIR)/crs_erasure_codes.o crs_erasure_codes.c -c
 
 crs_file_io.o: crs_spec_io.c crs_spec_io.h crs_spec_io.h
 	$(COMPILER) $(FLAGS) -o $(BIN_DIR)/crs_file_io.o crs_file_io.c -c

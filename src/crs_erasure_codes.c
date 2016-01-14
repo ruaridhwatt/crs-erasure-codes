@@ -5,9 +5,9 @@
 #include <cauchy.h>
 #include <errno.h>
 #include <unistd.h>
-#include "crs_encode.h"
 #include "crs_file_io.h"
 #include "crs_spec_io.h"
+#include "crs_erasure_codes.h"
 
 int main(int argc, char **argv) {
 	int c, res, i;
@@ -39,14 +39,14 @@ int main(int argc, char **argv) {
 			break;
 		case 'k':
 			res = str2int(optarg, &(spec.k));
-			if (res < 0) {
+			if (res < 0 || spec.k <= 0 || spec.k > MAX_K) {
 				print_usage(argv[0]);
 				return -1;
 			}
 			break;
 		case 'm':
 			res = str2int(optarg, &(spec.m));
-			if (res < 0) {
+			if (res < 0 || spec.m <= 0 || spec.m > MAX_M) {
 				print_usage(argv[0]);
 				return -1;
 			}
@@ -93,13 +93,19 @@ int main(int argc, char **argv) {
 		break;
 	}
 	if (res == 0) {
-		printf("Success!\n");
-	} else {
-		printf("Error!\n");
+		printf("Done!\n");
 	}
 	return res;
 }
 
+/**
+ * Encodes the file at src to dest directory. Also writes the spec to a file in dest. Spec k and m values must be
+ * initialised, The rest will be filled.
+ * @param src The file to encode
+ * @param dest The directory to create and fill with the data, coding and spec files.
+ * @param spec The spec (k and m) to be used in encoding
+ * @return 0 if successful, otherwise -1
+ */
 int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 
 	int res = 0;
@@ -184,6 +190,12 @@ int encode(char *src, char *dest, struct crs_encoding_spec *spec) {
 	return res;
 }
 
+/**
+ * Decodes (repairs) the file set in the src directory using the specified spec.
+ * @param src The directory containing the coding, data and spec files.
+ * @param spec An empty spec struct to read the spec file into.
+ * @return 0 if successful, otherwise -1
+ */
 int decode(char *src, struct crs_encoding_spec *spec) {
 	int res, i, j;
 	char *filePath;
@@ -272,6 +284,12 @@ int decode(char *src, struct crs_encoding_spec *spec) {
 	return res;
 }
 
+/**
+ * Calculates the encoding specifications from the size of the file to be encoded.
+ * @param spec The spec struct to fill
+ * @param filesize The size of the file to encode
+ * @return 0 if successful, otherwise -1
+ */
 int fill_encoding_spec(struct crs_encoding_spec *spec, size_t filesize) {
 
 	int res;
@@ -291,6 +309,13 @@ int fill_encoding_spec(struct crs_encoding_spec *spec, size_t filesize) {
 	return 0;
 }
 
+/**
+ * Calculates the end padding required to fill out the file data to the required size. Stores this information in the
+ * given spec struct.
+ * @param filesize The size of the file to encode
+ * @param spec The spec to be updated
+ * @return 0 if successful, otherwise -1
+ */
 int calc_padding(size_t filesize, struct crs_encoding_spec *spec) {
 	int div = spec->k * sizeof(long);
 	spec->endPadding = div - (filesize % div);
@@ -300,6 +325,11 @@ int calc_padding(size_t filesize, struct crs_encoding_spec *spec) {
 	return 0;
 }
 
+/**
+ * Updates the spec with the minimum possible word size given k, m, width and end padding are already filled.
+ * @param spec The spec to be updated
+ * @return 0 if successful, otherwise -1
+ */
 int calc_min_w(struct crs_encoding_spec *spec) {
 	int n = 4;
 	spec->w = 2;
@@ -313,13 +343,17 @@ int calc_min_w(struct crs_encoding_spec *spec) {
 	return 0;
 }
 
+/**
+ * Prints the usage to stdout.
+ * @param progName The name of the program binary
+ */
 void print_usage(char *progName) {
 	fprintf(stdout, "Usage:\n");
 	fprintf(stdout, "\t%s [options] [src] [dest]\n", progName);
 	fprintf(stdout, "Options:\n");
 	fprintf(stdout, "\t-e\t encode\n");
 	fprintf(stdout, "\t-d\t decode (when decoding only the source folder is required)\n");
-	fprintf(stdout, "\t-k\t the number of data files (when encoding only)\n");
-	fprintf(stdout, "\t-m\t the number of coding files (when encoding only)\n");
+	fprintf(stdout, "\t-k\t the number of data files (when encoding only) 1 < k < %d\n", MAX_K + 1);
+	fprintf(stdout, "\t-m\t the number of coding files (when encoding only) 1 < m < %d\n", MAX_M + 1);
 }
 
